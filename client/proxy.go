@@ -4,8 +4,16 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
+	"time"
+)
+
+const (
+	tcpReadTimeout   = 5 * time.Second
+	tcpIdleInterval  = 100 * time.Millisecond
+	tcpMaxResponse   = 1 << 20
 )
 
 func ForwardHTTP(localBase string, httpClient *http.Client, req *RelayRequest) *RelayResponse {
@@ -80,6 +88,83 @@ func isBinaryContent(resp *http.Response) bool {
 		}
 	}
 	return false
+}
+
+func ForwardTCP(host string, port int, req *RelayRequest) *RelayResponse {
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	conn, err := net.DialTimeout("tcp", addr, tcpReadTimeout)
+	if err != nil {
+		return errorResponse(req.ID, http.StatusBadGateway, "tcp connect: "+err.Error())
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(tcpReadTimeout))
+
+	if req.Body != "" || req.BodyBase64 != "" {
+		var sendBytes []byte
+		if req.BodyBase64 != "" {
+			sendBytes, err = base64.StdEncoding.DecodeString(req.BodyBase64)
+			if err != nil {
+				return errorResponse(req.ID, http.StatusBadRequest, "base64 decode: "+err.Error())
+			}
+		} else {
+			sendBytes = []byte(req.Body)
+		}
+
+		if _, err := conn.Write(sendBytes); err != nil {
+			return errorResponse(req.ID, http.StatusBadGateway, "tcp write: "+err.Error())
+		}
+	}
+
+	respBytes, err := readTCPResponse(conn)
+	if err != nil {
+		return errorResponse(req.ID, http.StatusBadGateway, "tcp read: "+err.Error())
+	}
+
+	headers := map[string]string{
+		"Content-Type": "application/octet-stream",
+	}
+
+	relayResp := &RelayResponse{
+		Type:       "response",
+		ID:         req.ID,
+		Status:     http.StatusOK,
+		Headers:    headers,
+		BodyBase64: base64.StdEncoding.EncodeToString(respBytes),
+	}
+
+	return relayResp
+}
+
+func readTCPResponse(conn net.Conn) ([]byte, error) {
+	buf := make([]byte, 4096)
+	var result []byte
+
+	for {
+		n, err := conn.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+			if len(result) >= tcpMaxResponse {
+				break
+			}
+		}
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() && len(result) > 0 {
+				break
+			}
+			if len(result) > 0 {
+				break
+			}
+			return nil, err
+		}
+		if n == 0 {
+			break
+		}
+
+		conn.SetReadDeadline(time.Now().Add(tcpIdleInterval))
+	}
+
+	return result, nil
 }
 
 func errorResponse(id string, status int, msg string) *RelayResponse {

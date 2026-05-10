@@ -50,13 +50,14 @@ type RelayConn interface {
 }
 
 type RelayRequest struct {
-	Type    string            `json:"type"`
-	ID      string            `json:"id"`
-	Method  string            `json:"method"`
-	Path    string            `json:"path"`
-	Query   string            `json:"query"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
+	Type       string            `json:"type"`
+	ID         string            `json:"id"`
+	Method     string            `json:"method"`
+	Path       string            `json:"path"`
+	Query      string            `json:"query"`
+	Headers    map[string]string `json:"headers"`
+	Body       string            `json:"body"`
+	BodyBase64 string            `json:"bodyBase64,omitempty"`
 }
 
 type RelayResponse struct {

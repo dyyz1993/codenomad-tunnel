@@ -24,13 +24,14 @@ type Config struct {
 }
 
 type RelayRequest struct {
-	Type    string            `json:"type"`
-	ID      string            `json:"id"`
-	Method  string            `json:"method"`
-	Path    string            `json:"path"`
-	Query   string            `json:"query"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
+	Type       string            `json:"type"`
+	ID         string            `json:"id"`
+	Method     string            `json:"method"`
+	Path       string            `json:"path"`
+	Query      string            `json:"query"`
+	Headers    map[string]string `json:"headers"`
+	Body       string            `json:"body"`
+	BodyBase64 string            `json:"bodyBase64,omitempty"`
 }
 
 type RelayResponse struct {
@@ -247,8 +248,7 @@ func (c *Client) connectAndRelay() error {
 func (c *Client) handleRequest(conn *websocket.Conn, req *RelayRequest) {
 	var resp *RelayResponse
 	if c.probeResult.Type == ServiceTypeTCP {
-		log.Printf("[TCP mode] Falling back to HTTP for request %s %s", req.Method, req.Path)
-		resp = ForwardHTTP(c.httpBase, c.httpClient, req)
+		resp = ForwardTCP(c.localHost, c.localPort, req)
 	} else {
 		resp = ForwardHTTP(c.httpBase, c.httpClient, req)
 	}

@@ -1,8 +1,12 @@
 package client
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -280,4 +284,189 @@ func TestClientShutdown(t *testing.T) {
 	}
 
 	c.Shutdown()
+}
+
+func TestForwardTCPEcho(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		io.Copy(conn, conn)
+	}()
+
+	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	var port int
+	fmt.Sscanf(portStr, "%d", &port)
+
+	req := &RelayRequest{
+		Type: "request",
+		ID:   "r_tcp1",
+		Body: "hello tcp world",
+	}
+
+	resp := ForwardTCP("127.0.0.1", port, req)
+
+	if resp.Type != "response" {
+		t.Errorf("expected type response, got %s", resp.Type)
+	}
+	if resp.ID != "r_tcp1" {
+		t.Errorf("expected ID r_tcp1, got %s", resp.ID)
+	}
+	if resp.Status != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, resp.Status)
+	}
+	if resp.BodyBase64 == "" {
+		t.Fatal("expected bodyBase64 in response")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(resp.BodyBase64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(decoded) != "hello tcp world" {
+		t.Errorf("expected echo 'hello tcp world', got %q", string(decoded))
+	}
+}
+
+func TestForwardTCPBinaryPayload(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	payload := []byte{0x00, 0x01, 0x02, 0xFF, 0xFE}
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		io.Copy(conn, conn)
+	}()
+
+	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	var port int
+	fmt.Sscanf(portStr, "%d", &port)
+
+	req := &RelayRequest{
+		Type:       "request",
+		ID:         "r_tcp2",
+		BodyBase64: base64.StdEncoding.EncodeToString(payload),
+	}
+
+	resp := ForwardTCP("127.0.0.1", port, req)
+
+	if resp.Status != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.Status)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(resp.BodyBase64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(decoded, payload) {
+		t.Errorf("binary roundtrip mismatch: got %v, want %v", decoded, payload)
+	}
+}
+
+func TestForwardTCPConnRefused(t *testing.T) {
+	req := &RelayRequest{
+		Type: "request",
+		ID:   "r_tcp_err",
+		Body: "test",
+	}
+
+	resp := ForwardTCP("127.0.0.1", 1, req)
+
+	if resp.Status != http.StatusBadGateway {
+		t.Errorf("expected 502 for refused connection, got %d", resp.Status)
+	}
+	if resp.Type != "response" {
+		t.Errorf("expected type response, got %s", resp.Type)
+	}
+}
+
+func TestForwardTCPNoBody(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	responseData := []byte("server greeting")
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.Write(responseData)
+		conn.Close()
+	}()
+
+	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	var port int
+	fmt.Sscanf(portStr, "%d", &port)
+
+	req := &RelayRequest{
+		Type: "request",
+		ID:   "r_tcp_nobody",
+	}
+
+	resp := ForwardTCP("127.0.0.1", port, req)
+
+	if resp.Status != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.Status)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(resp.BodyBase64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(decoded) != string(responseData) {
+		t.Errorf("expected %q, got %q", string(responseData), string(decoded))
+	}
+}
+
+func TestForwardTCPInvalidBase64(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		conn.Close()
+	}()
+
+	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	var port int
+	fmt.Sscanf(portStr, "%d", &port)
+
+	req := &RelayRequest{
+		Type:       "request",
+		ID:         "r_tcp_b64err",
+		BodyBase64: "!!!invalid-base64!!!",
+	}
+
+	resp := ForwardTCP("127.0.0.1", port, req)
+
+	if resp.Status != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid base64, got %d", resp.Status)
+	}
 }
