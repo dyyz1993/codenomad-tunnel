@@ -11,6 +11,14 @@ import (
 
 func HandleProxy(hub *Hub, domain string, apiDomain string, apiHandler http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			setProxyCorsHeaders(w)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		setProxyCorsHeaders(w)
+
 		host := r.Host
 		if idx := strings.LastIndex(host, ":"); idx != -1 {
 			host = host[:idx]
@@ -110,6 +118,14 @@ func writeResponse(w http.ResponseWriter, resp *RelayResponse) {
 	} else {
 		w.Write([]byte(resp.Body))
 	}
+}
+
+func setProxyCorsHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 }
 
 func extractSubdomain(host, domain string) string {
