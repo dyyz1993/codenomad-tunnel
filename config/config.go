@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	Domain    string
+	APIDomain string
 	HTTPPort  int
 	APIPort   int
 	TLSCert   string
@@ -17,9 +18,17 @@ type Config struct {
 	PublicURL string
 }
 
+func normalizeDomain(domain string) string {
+	domain = strings.TrimSpace(domain)
+	domain = strings.TrimPrefix(domain, "*.")
+	domain = strings.TrimPrefix(domain, "*")
+	return strings.TrimRight(domain, ".")
+}
+
 func Parse() *Config {
 	cfg := &Config{}
 	flag.StringVar(&cfg.Domain, "domain", "tunnel.example.com", "Base domain for tunnels")
+	flag.StringVar(&cfg.APIDomain, "api-domain", "", "Domain for management API (e.g. api.tunnel.example.com). Auto-generated as api.{domain} if empty")
 	flag.IntVar(&cfg.HTTPPort, "http-port", 80, "HTTP listener port")
 	flag.IntVar(&cfg.APIPort, "api-port", 8080, "Management API port")
 	flag.StringVar(&cfg.TLSCert, "tls-cert", "", "TLS certificate path")
@@ -29,6 +38,9 @@ func Parse() *Config {
 
 	if env := os.Getenv("TUNNEL_DOMAIN"); env != "" {
 		cfg.Domain = env
+	}
+	if env := os.Getenv("API_DOMAIN"); env != "" {
+		cfg.APIDomain = env
 	}
 	if env := os.Getenv("HTTP_PORT"); env != "" {
 		if n, err := strconv.Atoi(env); err == nil && n > 0 {
@@ -48,6 +60,13 @@ func Parse() *Config {
 	}
 	if env := os.Getenv("TUNNEL_PUBLIC_URL"); env != "" {
 		cfg.PublicURL = env
+	}
+
+	cfg.Domain = normalizeDomain(cfg.Domain)
+	cfg.APIDomain = normalizeDomain(cfg.APIDomain)
+
+	if cfg.APIDomain == "" {
+		cfg.APIDomain = "api." + cfg.Domain
 	}
 
 	return cfg

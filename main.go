@@ -19,14 +19,14 @@ func main() {
 	hub := tunnel.NewHub(publicBaseURL, relayBaseURL)
 	handler := api.NewHandler(hub, cfg.Domain)
 
+	apiMux := http.NewServeMux()
+	handler.RegisterRoutes(apiMux)
+
 	proxyMux := http.NewServeMux()
 	proxyMux.HandleFunc("/relay/{id}", func(w http.ResponseWriter, r *http.Request) {
 		tunnel.HandleRelay(hub, w, r)
 	})
-	proxyMux.Handle("/", tunnel.HandleProxy(hub, cfg.Domain))
-
-	apiMux := http.NewServeMux()
-	handler.RegisterRoutes(apiMux)
+	proxyMux.Handle("/", tunnel.HandleProxy(hub, cfg.Domain, cfg.APIDomain, corsMiddleware(apiMux)))
 
 	go func() {
 		addr := fmt.Sprintf(":%d", cfg.APIPort)

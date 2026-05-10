@@ -9,9 +9,18 @@ import (
 	"time"
 )
 
-func HandleProxy(hub *Hub, domain string) http.HandlerFunc {
+func HandleProxy(hub *Hub, domain string, apiDomain string, apiHandler http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		host := r.Host
+		if idx := strings.LastIndex(host, ":"); idx != -1 {
+			host = host[:idx]
+		}
+
+		if apiDomain != "" && host == apiDomain {
+			apiHandler.ServeHTTP(w, r)
+			return
+		}
+
 		subdomain := extractSubdomain(host, domain)
 		if subdomain == "" {
 			http.Error(w, "invalid host", http.StatusBadRequest)

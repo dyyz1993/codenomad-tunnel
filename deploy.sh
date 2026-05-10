@@ -10,6 +10,7 @@ set -euo pipefail
 #   ./deploy.sh --domain tunnel.yourdomain.com [--api-port 8080] [--http-port 80] [--dir /opt/codenomad-tunnel]
 
 DOMAIN=""
+API_DOMAIN=""
 API_PORT=8080
 HTTP_PORT=80
 PUBLIC_URL=""
@@ -30,12 +31,13 @@ err()   { echo -e "${RED}❌ $*${NC}"; }
 while [[ $# -gt 0 ]]; do
   case $1 in
     --domain)      DOMAIN="$2"; shift 2 ;;
+    --api-domain)  API_DOMAIN="$2"; shift 2 ;;
     --api-port)    API_PORT="$2"; shift 2 ;;
     --http-port)   HTTP_PORT="$2"; shift 2 ;;
     --public-url)  PUBLIC_URL="$2"; shift 2 ;;
     --dir)         INSTALL_DIR="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: ./deploy.sh --domain tunnel.yourdomain.com [--api-port 8080] [--http-port 80] [--public-url https://tunnel.yourdomain.com] [--dir /opt/codenomad-tunnel]"
+      echo "Usage: ./deploy.sh --domain tunnel.yourdomain.com [--api-domain api.tunnel.yourdomain.com] [--api-port 8080] [--http-port 80] [--public-url https://tunnel.yourdomain.com] [--dir /opt/codenomad-tunnel]"
       exit 0
       ;;
     *) err "Unknown option: $1"; exit 1 ;;
@@ -48,7 +50,8 @@ if [ -z "$DOMAIN" ]; then
   echo "Usage: ./deploy.sh --domain tunnel.yourdomain.com"
   echo ""
   echo "Options:"
-  echo "  --domain DOMAIN      Base domain for tunnels (required)"
+  echo "  --domain DOMAIN      Base domain for tunnels (required, supports *.domain.com)"
+  echo "  --api-domain DOMAIN  Domain for management API (default: api.{domain})"
   echo "  --http-port PORT     HTTP tunnel proxy port (default: 80)"
   echo "  --api-port PORT      Management API port (default: 8080)"
   echo "  --public-url URL     Full public base URL (default: derived from domain+port)"
@@ -56,9 +59,17 @@ if [ -z "$DOMAIN" ]; then
   exit 1
 fi
 
+DOMAIN="${DOMAIN#\*.}"
+DOMAIN="${DOMAIN#\*}"
+
+if [ -z "$API_DOMAIN" ]; then
+  API_DOMAIN="api.${DOMAIN}"
+fi
+
 echo ""
 echo "🚀 Deploying CodeNomad Tunnel Hub..."
 echo "   Domain:     $DOMAIN"
+echo "   API Domain: $API_DOMAIN"
 echo "   HTTP Port:  $HTTP_PORT"
 echo "   API Port:   $API_PORT"
 echo "   Public URL: ${PUBLIC_URL:-<derived from domain+port>}"
@@ -176,7 +187,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${INSTALL_DIR}/tunnel-hub --domain ${DOMAIN} --http-port ${HTTP_PORT} --api-port ${API_PORT} ${PUBLIC_URL:+--public-url $PUBLIC_URL}
+ExecStart=${INSTALL_DIR}/tunnel-hub --domain ${DOMAIN} --api-domain ${API_DOMAIN} --http-port ${HTTP_PORT} --api-port ${API_PORT} ${PUBLIC_URL:+--public-url $PUBLIC_URL}
 WorkingDirectory=${INSTALL_DIR}
 Restart=always
 RestartSec=5
@@ -213,13 +224,14 @@ if systemctl is-active --quiet codenomad-tunnel; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     echo "  🌐 Public wildcard:  *.${DOMAIN}"
+    echo "  🔌 API domain:       ${API_DOMAIN}"
     echo "  📊 API health:       http://127.0.0.1:${API_PORT}/api/health"
     echo ""
     echo "  📝 CodeNomad CLI flag:"
-    echo "     --tunnel-hub-url http://${DOMAIN}"
+    echo "     --tunnel-hub-url https://${API_DOMAIN}"
     echo ""
     echo "  📝 Or in CodeNomad settings (config.json):"
-    echo "     \"tunnelHubUrl\": \"http://${DOMAIN}\""
+    echo "     \"tunnelHubUrl\": \"https://${API_DOMAIN}\""
     echo ""
     echo "  🔧 Management commands:"
     echo "     systemctl status  codenomad-tunnel"

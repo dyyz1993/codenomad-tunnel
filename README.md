@@ -9,14 +9,25 @@ HTTP-over-WebSocket reverse proxy tunnel service. Expose local services to the i
 Deploy to any Linux VPS with a single command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/main/deploy.sh | sudo bash -s -- --domain tunnel.yourdomain.com
+# Simple: wildcard domain input (auto-strips *. prefix)
+curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/main/deploy.sh | sudo bash -s -- --domain "*.tunnel.yourdomain.com"
+
+# With custom API domain:
+curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/main/deploy.sh | sudo bash -s -- --domain "*.tunnel.yourdomain.com" --api-domain "api.tunnel.yourdomain.com"
 ```
+
+This auto-generates:
+- **API domain**: `api.tunnel.yourdomain.com`
+- **Tunnel wildcard**: `*.tunnel.yourdomain.com`
+- **Public URL**: `https://k8f2x1.tunnel.yourdomain.com`
+- **API URL**: `https://api.tunnel.yourdomain.com`
 
 Options:
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--domain` | *(required)* | Base domain for tunnels |
+| `--domain` | *(required)* | Base domain for tunnels (supports `*.domain.com` format) |
+| `--api-domain` | `api.{domain}` | Domain for management API |
 | `--http-port` | `80` | HTTP tunnel proxy port |
 | `--api-port` | `8080` | Management API port |
 | `--dir` | `/opt/codenomad-tunnel` | Installation directory |
@@ -33,7 +44,7 @@ docker compose up -d
 
 ```bash
 go build -o tunnel-hub .
-./tunnel-hub --domain tunnel.yourdomain.com --http-port 80 --api-port 8080
+./tunnel-hub --domain "*.tunnel.yourdomain.com" --http-port 80 --api-port 8080
 ```
 
 ## DNS & Domain Configuration
@@ -79,6 +90,16 @@ Create a wildcard DNS record pointing to your server:
 ```
 
 ## API Documentation
+
+The management API is available on the dedicated API port (8080) and also via the `--api-domain` on the HTTP port:
+
+```bash
+# Via API domain (recommended, works through reverse proxy/HTTPS):
+curl https://api.tunnel.yourdomain.com/api/health
+
+# Via dedicated API port:
+curl http://localhost:8080/api/health
+```
 
 ### Create a Tunnel
 
@@ -177,14 +198,15 @@ Binary response (use base64):
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--domain` | `tunnel.example.com` | Base domain for tunnels |
+| `--domain` | `tunnel.example.com` | Base domain for tunnels (supports `*.domain.com`) |
+| `--api-domain` | `api.{domain}` | Domain for management API on HTTP port |
 | `--http-port` | `80` | HTTP tunnel proxy port |
 | `--api-port` | `8080` | Management API port |
 | `--tls-cert` | | TLS certificate path |
 | `--tls-key` | | TLS key path |
 | `--public-url` | | Full public base URL (overrides derived URL) |
 
-Environment variables: `TUNNEL_DOMAIN`, `HTTP_PORT`, `API_PORT`, `TLS_CERT`, `TLS_KEY`, `TUNNEL_PUBLIC_URL`
+Environment variables: `TUNNEL_DOMAIN`, `API_DOMAIN`, `HTTP_PORT`, `API_PORT`, `TLS_CERT`, `TLS_KEY`, `TUNNEL_PUBLIC_URL`
 
 ## TLS
 
@@ -200,8 +222,8 @@ volumes:
 
 ## Architecture
 
-- **HTTP proxy** on port 80: catches `*.tunnel.domain.com` requests, extracts subdomain, forwards through WebSocket
+- **HTTP proxy** on port 80: catches `*.tunnel.domain.com` requests, extracts subdomain, forwards through WebSocket. If the Host matches `--api-domain`, routes to the management API instead.
 - **WebSocket relay** at `/relay/{tunnelId}`: local clients connect here, relay HTTP requests/responses
-- **Management API** on port 8080: CRUD for tunnels, stats, health
+- **Management API** on port 8080: CRUD for tunnels, stats, health. Also accessible via `--api-domain` on the HTTP port.
 
 Each tunnel handles multiple concurrent requests via unique request IDs. Requests time out after 30s if the relay client doesn't respond.
