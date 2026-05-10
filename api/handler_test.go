@@ -11,7 +11,7 @@ import (
 )
 
 func setupMux() (*tunnel.Hub, *http.ServeMux) {
-	hub := tunnel.NewHub("tunnel.example.com")
+	hub := tunnel.NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 	handler := NewHandler(hub, "tunnel.example.com")
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)

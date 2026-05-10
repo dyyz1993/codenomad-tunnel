@@ -36,6 +36,40 @@ go build -o tunnel-hub .
 ./tunnel-hub --domain tunnel.yourdomain.com --http-port 80 --api-port 8080
 ```
 
+## DNS & Domain Configuration
+
+### Standard setup (port 80)
+
+```
+*.tunnel.yourdomain.com  →  A record  →  your VPS IP
+```
+
+No extra flags needed — public URLs default to `http://subdomain.tunnel.yourdomain.com`.
+
+### Custom port (e.g., 8080)
+
+```
+*.tunnel.yourdomain.com  →  A record  →  your VPS IP
+
+./tunnel-hub --domain tunnel.yourdomain.com --http-port 8080 \
+  --public-url http://tunnel.yourdomain.com:8080
+```
+
+### Behind reverse proxy (recommended for HTTPS)
+
+```
+DNS: *.tunnel.yourdomain.com → VPS IP
+
+Caddy/Nginx:
+  *.tunnel.yourdomain.com {
+    reverse_proxy localhost:8080
+  }
+
+tunnel-hub:
+  ./tunnel-hub --domain tunnel.yourdomain.com --http-port 8080 \
+    --public-url https://tunnel.yourdomain.com
+```
+
 ## DNS Setup
 
 Create a wildcard DNS record pointing to your server:
@@ -59,8 +93,8 @@ Response:
 {
   "id": "t_k8f2x1",
   "subdomain": "k8f2x1",
-  "publicUrl": "https://k8f2x1.tunnel.yourdomain.com",
-  "relayUrl": "wss://tunnel.yourdomain.com/relay/t_k8f2x1",
+  "publicUrl": "https://tunnel.example.com/k8f2x1",
+  "relayUrl": "wss://tunnel.example.com/relay/t_k8f2x1",
   "status": "waiting",
   "name": "my-service",
   "createdAt": "2026-05-10T12:00:00Z"
@@ -148,8 +182,9 @@ Binary response (use base64):
 | `--api-port` | `8080` | Management API port |
 | `--tls-cert` | | TLS certificate path |
 | `--tls-key` | | TLS key path |
+| `--public-url` | | Full public base URL (overrides derived URL) |
 
-Environment variables: `TUNNEL_DOMAIN`, `HTTP_PORT`, `API_PORT`, `TLS_CERT`, `TLS_KEY`
+Environment variables: `TUNNEL_DOMAIN`, `HTTP_PORT`, `API_PORT`, `TLS_CERT`, `TLS_KEY`, `TUNNEL_PUBLIC_URL`
 
 ## TLS
 

@@ -1,11 +1,12 @@
 package tunnel
 
 import (
+	"strings"
 	"testing"
 )
 
 func TestHubCreateTunnel(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	tunnel := hub.Create("test-crawler", "localhost", 8080)
 
@@ -30,10 +31,16 @@ func TestHubCreateTunnel(t *testing.T) {
 	if tunnel.RelayURL == "" {
 		t.Error("expected non-empty relayUrl")
 	}
+	if !strings.Contains(tunnel.PublicURL, "https://tunnel.example.com/") {
+		t.Errorf("expected publicUrl to contain base URL, got %s", tunnel.PublicURL)
+	}
+	if !strings.Contains(tunnel.RelayURL, "wss://tunnel.example.com/relay/") {
+		t.Errorf("expected relayUrl to contain relay base URL, got %s", tunnel.RelayURL)
+	}
 }
 
 func TestHubCreateUniqueSubdomains(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	t1 := hub.Create("a", "localhost", 8080)
 	t2 := hub.Create("b", "localhost", 8081)
@@ -47,7 +54,7 @@ func TestHubCreateUniqueSubdomains(t *testing.T) {
 }
 
 func TestHubGetTunnel(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	created := hub.Create("test", "localhost", 3000)
 	found, ok := hub.Get(created.ID)
@@ -61,7 +68,7 @@ func TestHubGetTunnel(t *testing.T) {
 }
 
 func TestHubGetTunnelNotFound(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	_, ok := hub.Get("nonexistent")
 	if ok {
@@ -70,7 +77,7 @@ func TestHubGetTunnelNotFound(t *testing.T) {
 }
 
 func TestHubListTunnels(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	hub.Create("a", "localhost", 8080)
 	hub.Create("b", "localhost", 8081)
@@ -83,7 +90,7 @@ func TestHubListTunnels(t *testing.T) {
 }
 
 func TestHubDeleteTunnel(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	created := hub.Create("test", "localhost", 8080)
 	deleted := hub.Delete(created.ID)
@@ -99,7 +106,7 @@ func TestHubDeleteTunnel(t *testing.T) {
 }
 
 func TestHubDeleteNonexistent(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	deleted := hub.Delete("nonexistent")
 	if deleted {
@@ -108,7 +115,7 @@ func TestHubDeleteNonexistent(t *testing.T) {
 }
 
 func TestHubGetBySubdomain(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	created := hub.Create("test", "localhost", 8080)
 	found, ok := hub.GetBySubdomain(created.Subdomain)
@@ -122,7 +129,7 @@ func TestHubGetBySubdomain(t *testing.T) {
 }
 
 func TestHubGetBySubdomainNotFound(t *testing.T) {
-	hub := NewHub("tunnel.example.com")
+	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
 	_, ok := hub.GetBySubdomain("nonexistent")
 	if ok {

@@ -13,7 +13,10 @@ import (
 func main() {
 	cfg := config.Parse()
 
-	hub := tunnel.NewHub(cfg.Domain)
+	publicBaseURL := cfg.GetPublicBaseURL()
+	relayBaseURL := cfg.GetRelayBaseURL()
+
+	hub := tunnel.NewHub(publicBaseURL, relayBaseURL)
 	handler := api.NewHandler(hub, cfg.Domain)
 
 	proxyMux := http.NewServeMux()

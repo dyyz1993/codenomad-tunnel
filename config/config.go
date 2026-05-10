@@ -2,16 +2,19 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
-	Domain   string
-	HTTPPort int
-	APIPort  int
-	TLSCert  string
-	TLSKey   string
+	Domain    string
+	HTTPPort  int
+	APIPort   int
+	TLSCert   string
+	TLSKey    string
+	PublicURL string
 }
 
 func Parse() *Config {
@@ -21,6 +24,7 @@ func Parse() *Config {
 	flag.IntVar(&cfg.APIPort, "api-port", 8080, "Management API port")
 	flag.StringVar(&cfg.TLSCert, "tls-cert", "", "TLS certificate path")
 	flag.StringVar(&cfg.TLSKey, "tls-key", "", "TLS key path")
+	flag.StringVar(&cfg.PublicURL, "public-url", "", "Full public base URL (e.g. https://tunnel.example.com)")
 	flag.Parse()
 
 	if env := os.Getenv("TUNNEL_DOMAIN"); env != "" {
@@ -42,6 +46,31 @@ func Parse() *Config {
 	if env := os.Getenv("TLS_KEY"); env != "" {
 		cfg.TLSKey = env
 	}
+	if env := os.Getenv("TUNNEL_PUBLIC_URL"); env != "" {
+		cfg.PublicURL = env
+	}
 
 	return cfg
+}
+
+func (c *Config) GetPublicBaseURL() string {
+	if c.PublicURL != "" {
+		return strings.TrimRight(c.PublicURL, "/")
+	}
+	scheme := "http"
+	if c.TLSCert != "" {
+		scheme = "https"
+	}
+	if (c.HTTPPort == 80 && scheme == "http") || (c.HTTPPort == 443 && scheme == "https") {
+		return fmt.Sprintf("%s://%s", scheme, c.Domain)
+	}
+	return fmt.Sprintf("%s://%s:%d", scheme, c.Domain, c.HTTPPort)
+}
+
+func (c *Config) GetRelayBaseURL() string {
+	base := c.GetPublicBaseURL()
+	if strings.HasPrefix(base, "https://") {
+		return "wss://" + strings.TrimPrefix(base, "https://")
+	}
+	return "ws://" + strings.TrimPrefix(base, "http://")
 }

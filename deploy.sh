@@ -12,6 +12,7 @@ set -euo pipefail
 DOMAIN=""
 API_PORT=8080
 HTTP_PORT=80
+PUBLIC_URL=""
 INSTALL_DIR="/opt/codenomad-tunnel"
 REPO="dyyz1993/codenomad-tunnel"
 
@@ -28,12 +29,13 @@ err()   { echo -e "${RED}❌ $*${NC}"; }
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --domain)    DOMAIN="$2"; shift 2 ;;
-    --api-port)  API_PORT="$2"; shift 2 ;;
-    --http-port) HTTP_PORT="$2"; shift 2 ;;
-    --dir)       INSTALL_DIR="$2"; shift 2 ;;
+    --domain)      DOMAIN="$2"; shift 2 ;;
+    --api-port)    API_PORT="$2"; shift 2 ;;
+    --http-port)   HTTP_PORT="$2"; shift 2 ;;
+    --public-url)  PUBLIC_URL="$2"; shift 2 ;;
+    --dir)         INSTALL_DIR="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: ./deploy.sh --domain tunnel.yourdomain.com [--api-port 8080] [--http-port 80] [--dir /opt/codenomad-tunnel]"
+      echo "Usage: ./deploy.sh --domain tunnel.yourdomain.com [--api-port 8080] [--http-port 80] [--public-url https://tunnel.yourdomain.com] [--dir /opt/codenomad-tunnel]"
       exit 0
       ;;
     *) err "Unknown option: $1"; exit 1 ;;
@@ -49,16 +51,18 @@ if [ -z "$DOMAIN" ]; then
   echo "  --domain DOMAIN      Base domain for tunnels (required)"
   echo "  --http-port PORT     HTTP tunnel proxy port (default: 80)"
   echo "  --api-port PORT      Management API port (default: 8080)"
+  echo "  --public-url URL     Full public base URL (default: derived from domain+port)"
   echo "  --dir PATH           Installation directory (default: /opt/codenomad-tunnel)"
   exit 1
 fi
 
 echo ""
 echo "🚀 Deploying CodeNomad Tunnel Hub..."
-echo "   Domain:    $DOMAIN"
-echo "   HTTP Port: $HTTP_PORT"
-echo "   API Port:  $API_PORT"
-echo "   Install:   $INSTALL_DIR"
+echo "   Domain:     $DOMAIN"
+echo "   HTTP Port:  $HTTP_PORT"
+echo "   API Port:   $API_PORT"
+echo "   Public URL: ${PUBLIC_URL:-<derived from domain+port>}"
+echo "   Install:    $INSTALL_DIR"
 echo ""
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -172,7 +176,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${INSTALL_DIR}/tunnel-hub --domain ${DOMAIN} --http-port ${HTTP_PORT} --api-port ${API_PORT}
+ExecStart=${INSTALL_DIR}/tunnel-hub --domain ${DOMAIN} --http-port ${HTTP_PORT} --api-port ${API_PORT} ${PUBLIC_URL:+--public-url $PUBLIC_URL}
 WorkingDirectory=${INSTALL_DIR}
 Restart=always
 RestartSec=5

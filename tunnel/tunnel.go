@@ -87,12 +87,12 @@ func randomString(length int) string {
 	return string(b)
 }
 
-func NewTunnel(id, subdomain, domain, name, targetHost string, targetPort int) *Tunnel {
+func NewTunnel(id, subdomain, publicBaseURL, relayBaseURL, name, targetHost string, targetPort int) *Tunnel {
 	return &Tunnel{
 		ID:         id,
 		Subdomain:  subdomain,
-		PublicURL:  "https://" + subdomain + "." + domain,
-		RelayURL:   "wss://" + domain + "/relay/" + id,
+		PublicURL:  publicBaseURL + "/" + subdomain,
+		RelayURL:   relayBaseURL + "/relay/" + id,
 		Name:       name,
 		TargetHost: targetHost,
 		TargetPort: targetPort,

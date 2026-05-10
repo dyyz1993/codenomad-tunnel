@@ -8,17 +8,19 @@ import (
 const cleanupInterval = 5 * time.Minute
 
 type Hub struct {
-	mu       sync.RWMutex
-	tunnels  map[string]*Tunnel
-	bySubdom map[string]*Tunnel
-	domain   string
+	mu            sync.RWMutex
+	tunnels       map[string]*Tunnel
+	bySubdom      map[string]*Tunnel
+	publicBaseURL string
+	relayBaseURL  string
 }
 
-func NewHub(domain string) *Hub {
+func NewHub(publicBaseURL, relayBaseURL string) *Hub {
 	h := &Hub{
-		tunnels:  make(map[string]*Tunnel),
-		bySubdom: make(map[string]*Tunnel),
-		domain:   domain,
+		tunnels:       make(map[string]*Tunnel),
+		bySubdom:      make(map[string]*Tunnel),
+		publicBaseURL: publicBaseURL,
+		relayBaseURL:  relayBaseURL,
 	}
 	go h.cleanupLoop()
 	return h
@@ -41,7 +43,7 @@ func (h *Hub) Create(name, targetHost string, targetPort int) *Tunnel {
 	}
 
 	id := GenerateTunnelID()
-	t := NewTunnel(id, subdomain, h.domain, name, targetHost, targetPort)
+	t := NewTunnel(id, subdomain, h.publicBaseURL, h.relayBaseURL, name, targetHost, targetPort)
 	h.tunnels[id] = t
 	h.bySubdom[subdomain] = t
 	return t
