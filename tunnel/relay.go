@@ -79,6 +79,8 @@ func HandleRelay(hub *Hub, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+
 		var resp RelayResponse
 		if err := json.Unmarshal(msg, &resp); err != nil {
 			log.Printf("relay unmarshal error for %s: %v", tunnelID, err)

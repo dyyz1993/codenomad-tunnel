@@ -230,6 +230,8 @@ func (c *Client) connectAndRelay() error {
 			return nil
 		}
 
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
 		var req RelayRequest
 		if err := json.Unmarshal(msg, &req); err != nil {
 			log.Printf("Invalid message: %v", err)
@@ -275,6 +277,7 @@ func (c *Client) pingLoop(conn *websocket.Conn, done chan struct{}) {
 			err := conn.WriteMessage(websocket.PingMessage, nil)
 			<-c.writeMu
 			if err != nil {
+				conn.Close()
 				return
 			}
 		}
