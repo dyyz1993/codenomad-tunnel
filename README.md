@@ -4,11 +4,32 @@ HTTP-over-WebSocket reverse proxy tunnel service. Expose local services to the i
 
 ## Quick Start
 
+### One-Click VPS Deployment
+
+Deploy to any Linux VPS with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/main/deploy.sh | sudo bash -s -- --domain tunnel.yourdomain.com
+```
+
+Options:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--domain` | *(required)* | Base domain for tunnels |
+| `--http-port` | `80` | HTTP tunnel proxy port |
+| `--api-port` | `8080` | Management API port |
+| `--dir` | `/opt/codenomad-tunnel` | Installation directory |
+
+The script auto-detects your architecture, downloads a pre-built binary (or builds from source), and sets up a systemd service.
+
+### Docker
+
 ```bash
 docker compose up -d
 ```
 
-Or run directly:
+### Build from Source
 
 ```bash
 go build -o tunnel-hub .
