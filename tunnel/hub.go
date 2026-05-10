@@ -26,27 +26,35 @@ func NewHub(publicBaseURL, relayBaseURL string) *Hub {
 	return h
 }
 
-func (h *Hub) Create(name, targetHost string, targetPort int) *Tunnel {
+func (h *Hub) Create(name, targetHost string, targetPort int, subdomain string) (*Tunnel, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	var subdomain string
-	for i := 0; i < 10; i++ {
-		subdomain = GenerateSubdomain()
-		if _, exists := h.bySubdom[subdomain]; !exists {
-			break
+	if subdomain != "" {
+		if !ValidateSubdomain(subdomain) {
+			return nil, ErrInvalidSubdomain
 		}
-		subdomain = ""
-	}
-	if subdomain == "" {
-		subdomain = GenerateSubdomain()
+		if _, exists := h.bySubdom[subdomain]; exists {
+			return nil, ErrDuplicate
+		}
+	} else {
+		for i := 0; i < 10; i++ {
+			subdomain = GenerateSubdomain()
+			if _, exists := h.bySubdom[subdomain]; !exists {
+				break
+			}
+			subdomain = ""
+		}
+		if subdomain == "" {
+			subdomain = GenerateSubdomain()
+		}
 	}
 
 	id := GenerateTunnelID()
 	t := NewTunnel(id, subdomain, h.publicBaseURL, h.relayBaseURL, name, targetHost, targetPort)
 	h.tunnels[id] = t
 	h.bySubdom[subdomain] = t
-	return t
+	return t, nil
 }
 
 func (h *Hub) Get(id string) (*Tunnel, bool) {

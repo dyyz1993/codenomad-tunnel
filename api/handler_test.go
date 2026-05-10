@@ -67,8 +67,8 @@ func TestCreateTunnel(t *testing.T) {
 func TestListTunnels(t *testing.T) {
 	hub, mux := setupMux()
 
-	hub.Create("a", "localhost", 8080)
-	hub.Create("b", "localhost", 8081)
+	hub.Create("a", "localhost", 8080, "")
+	hub.Create("b", "localhost", 8081, "")
 
 	req := httptest.NewRequest("GET", "/api/tunnels", nil)
 	w := httptest.NewRecorder()
@@ -89,7 +89,7 @@ func TestListTunnels(t *testing.T) {
 func TestDeleteTunnel(t *testing.T) {
 	hub, mux := setupMux()
 
-	created := hub.Create("test", "localhost", 8080)
+	created, _ := hub.Create("test", "localhost", 8080, "")
 
 	req := httptest.NewRequest("DELETE", "/api/tunnels/"+created.ID, nil)
 	w := httptest.NewRecorder()
@@ -108,7 +108,7 @@ func TestDeleteTunnel(t *testing.T) {
 func TestGetTunnel(t *testing.T) {
 	hub, mux := setupMux()
 
-	created := hub.Create("test", "localhost", 8080)
+	created, _ := hub.Create("test", "localhost", 8080, "")
 
 	req := httptest.NewRequest("GET", "/api/tunnels/"+created.ID, nil)
 	w := httptest.NewRecorder()
@@ -128,5 +128,56 @@ func TestGetTunnelNotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestCreateTunnelWithSubdomain(t *testing.T) {
+	_, mux := setupMux()
+
+	body := `{"name":"test","targetHost":"localhost","targetPort":8080,"subdomain":"my-app"}`
+	req := httptest.NewRequest("POST", "/api/tunnels", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d, body: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	if resp["subdomain"] != "my-app" {
+		t.Errorf("expected subdomain my-app, got %v", resp["subdomain"])
+	}
+}
+
+func TestCreateTunnelWithDuplicateSubdomain(t *testing.T) {
+	hub, mux := setupMux()
+
+	hub.Create("first", "localhost", 8080, "taken")
+
+	body := `{"name":"second","targetHost":"localhost","targetPort":8081,"subdomain":"taken"}`
+	req := httptest.NewRequest("POST", "/api/tunnels", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d, body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreateTunnelWithInvalidSubdomain(t *testing.T) {
+	_, mux := setupMux()
+
+	body := `{"name":"test","targetHost":"localhost","targetPort":8080,"subdomain":"-bad"}`
+	req := httptest.NewRequest("POST", "/api/tunnels", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d, body: %s", w.Code, w.Body.String())
 	}
 }

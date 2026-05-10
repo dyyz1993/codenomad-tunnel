@@ -3,6 +3,8 @@ package tunnel
 import (
 	"crypto/rand"
 	"math/big"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -87,12 +89,29 @@ func randomString(length int) string {
 	return string(b)
 }
 
+var subdomainRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+func ValidateSubdomain(sub string) bool {
+	return len(sub) >= 1 && len(sub) <= 63 && subdomainRe.MatchString(sub)
+}
+
 func NewTunnel(id, subdomain, publicBaseURL, relayBaseURL, name, targetHost string, targetPort int) *Tunnel {
+	var publicURL string
+	if idx := strings.Index(publicBaseURL, "*"); idx >= 0 {
+		publicURL = publicBaseURL[:idx] + subdomain + publicBaseURL[idx+1:]
+	} else {
+		publicURL = publicBaseURL + "/" + subdomain
+	}
+	relayURL := relayBaseURL
+	if idx := strings.Index(relayBaseURL, "*"); idx >= 0 {
+		relayURL = relayBaseURL[:idx] + "api" + relayBaseURL[idx+1:]
+	}
+
 	return &Tunnel{
 		ID:         id,
 		Subdomain:  subdomain,
-		PublicURL:  publicBaseURL + "/" + subdomain,
-		RelayURL:   relayBaseURL + "/relay/" + id,
+		PublicURL:  publicURL,
+		RelayURL:   relayURL + "/relay/" + id,
 		Name:       name,
 		TargetHost: targetHost,
 		TargetPort: targetPort,

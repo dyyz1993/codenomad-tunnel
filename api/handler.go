@@ -31,6 +31,7 @@ type createRequest struct {
 	Name       string `json:"name"`
 	TargetHost string `json:"targetHost"`
 	TargetPort int    `json:"targetPort"`
+	Subdomain  string `json:"subdomain"`
 }
 
 func (h *Handler) createTunnel(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +41,18 @@ func (h *Handler) createTunnel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t := h.hub.Create(req.Name, req.TargetHost, req.TargetPort)
+	t, err := h.hub.Create(req.Name, req.TargetHost, req.TargetPort, req.Subdomain)
+	if err != nil {
+		status := http.StatusInternalServerError
+		switch err {
+		case tunnel.ErrInvalidSubdomain:
+			status = http.StatusBadRequest
+		case tunnel.ErrDuplicate:
+			status = http.StatusConflict
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
 	writeJSON(w, http.StatusCreated, t)
 }
 

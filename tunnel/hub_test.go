@@ -6,10 +6,13 @@ import (
 )
 
 func TestHubCreateTunnel(t *testing.T) {
-	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
+	hub := NewHub("https://*.tunnel.example.com", "wss://tunnel.example.com")
 
-	tunnel := hub.Create("test-crawler", "localhost", 8080)
+	tunnel, err := hub.Create("test-crawler", "localhost", 8080, "")
 
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if tunnel.ID == "" {
 		t.Error("expected non-empty tunnel ID")
 	}
@@ -31,8 +34,8 @@ func TestHubCreateTunnel(t *testing.T) {
 	if tunnel.RelayURL == "" {
 		t.Error("expected non-empty relayUrl")
 	}
-	if !strings.Contains(tunnel.PublicURL, "https://tunnel.example.com/") {
-		t.Errorf("expected publicUrl to contain base URL, got %s", tunnel.PublicURL)
+	if !strings.Contains(tunnel.PublicURL, ".tunnel.example.com") {
+		t.Errorf("expected publicUrl to contain domain, got %s", tunnel.PublicURL)
 	}
 	if !strings.Contains(tunnel.RelayURL, "wss://tunnel.example.com/relay/") {
 		t.Errorf("expected relayUrl to contain relay base URL, got %s", tunnel.RelayURL)
@@ -42,8 +45,8 @@ func TestHubCreateTunnel(t *testing.T) {
 func TestHubCreateUniqueSubdomains(t *testing.T) {
 	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
-	t1 := hub.Create("a", "localhost", 8080)
-	t2 := hub.Create("b", "localhost", 8081)
+	t1, _ := hub.Create("a", "localhost", 8080, "")
+	t2, _ := hub.Create("b", "localhost", 8081, "")
 
 	if t1.Subdomain == t2.Subdomain {
 		t.Error("expected unique subdomains")
@@ -56,7 +59,7 @@ func TestHubCreateUniqueSubdomains(t *testing.T) {
 func TestHubGetTunnel(t *testing.T) {
 	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
-	created := hub.Create("test", "localhost", 3000)
+	created, _ := hub.Create("test", "localhost", 3000, "")
 	found, ok := hub.Get(created.ID)
 
 	if !ok {
@@ -79,9 +82,9 @@ func TestHubGetTunnelNotFound(t *testing.T) {
 func TestHubListTunnels(t *testing.T) {
 	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
-	hub.Create("a", "localhost", 8080)
-	hub.Create("b", "localhost", 8081)
-	hub.Create("c", "localhost", 8082)
+	hub.Create("a", "localhost", 8080, "")
+	hub.Create("b", "localhost", 8081, "")
+	hub.Create("c", "localhost", 8082, "")
 
 	list := hub.List()
 	if len(list) != 3 {
@@ -92,7 +95,7 @@ func TestHubListTunnels(t *testing.T) {
 func TestHubDeleteTunnel(t *testing.T) {
 	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
-	created := hub.Create("test", "localhost", 8080)
+	created, _ := hub.Create("test", "localhost", 8080, "")
 	deleted := hub.Delete(created.ID)
 
 	if !deleted {
@@ -117,7 +120,7 @@ func TestHubDeleteNonexistent(t *testing.T) {
 func TestHubGetBySubdomain(t *testing.T) {
 	hub := NewHub("https://tunnel.example.com", "wss://tunnel.example.com")
 
-	created := hub.Create("test", "localhost", 8080)
+	created, _ := hub.Create("test", "localhost", 8080, "")
 	found, ok := hub.GetBySubdomain(created.Subdomain)
 
 	if !ok {
@@ -134,5 +137,44 @@ func TestHubGetBySubdomainNotFound(t *testing.T) {
 	_, ok := hub.GetBySubdomain("nonexistent")
 	if ok {
 		t.Error("expected false for nonexistent subdomain")
+	}
+}
+
+func TestHubCreateWithUserSubdomain(t *testing.T) {
+	hub := NewHub("https://*.tunnel.example.com", "wss://tunnel.example.com")
+
+	tunnel, err := hub.Create("test", "localhost", 8080, "my-app")
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tunnel.Subdomain != "my-app" {
+		t.Errorf("expected subdomain my-app, got %s", tunnel.Subdomain)
+	}
+	if tunnel.PublicURL != "https://my-app.tunnel.example.com" {
+		t.Errorf("unexpected publicUrl: %s", tunnel.PublicURL)
+	}
+}
+
+func TestHubCreateWithDuplicateSubdomain(t *testing.T) {
+	hub := NewHub("https://*.tunnel.example.com", "wss://tunnel.example.com")
+
+	_, err := hub.Create("test", "localhost", 8080, "my-app")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	_, err = hub.Create("test2", "localhost", 8081, "my-app")
+	if err != ErrDuplicate {
+		t.Errorf("expected ErrDuplicate, got %v", err)
+	}
+}
+
+func TestHubCreateWithInvalidSubdomain(t *testing.T) {
+	hub := NewHub("https://*.tunnel.example.com", "wss://tunnel.example.com")
+
+	_, err := hub.Create("test", "localhost", 8080, "-bad")
+	if err != ErrInvalidSubdomain {
+		t.Errorf("expected ErrInvalidSubdomain, got %v", err)
 	}
 }
