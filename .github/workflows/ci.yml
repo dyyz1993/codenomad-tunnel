@@ -14,33 +14,64 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-
       - name: Run tests
         run: go test ./... -v -race -count=1
 
-      - name: Build
-        run: CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o tunnel-hub .
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: tunnel-hub-linux-amd64
-          path: tunnel-hub
-          retention-days: 7
-
-  docker:
-    runs-on: ubuntu-latest
+  build:
     needs: [test]
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
 
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          BINARY_NAME="tunnel-hub-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARY_NAME} .
+          echo "Built: ${BINARY_NAME}"
+          ls -lh ${BINARY_NAME}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunnel-hub-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: tunnel-hub-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          retention-days: 30
+
+  docker:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Build Docker image
         run: docker build -t codenomad-tunnel:ci .
-
-      - name: Test Docker image
+      - name: Smoke test
         run: |
           docker run -d --name tunnel-test -p 18080:8080 codenomad-tunnel:ci --domain tunnel.test.com --api-port 8080
           sleep 3
           curl -sf http://127.0.0.1:18080/api/health || (echo "Health check failed" && docker logs tunnel-test && exit 1)
-          echo "Docker image works!"
+          echo "Docker image OK"
           docker stop tunnel-test
