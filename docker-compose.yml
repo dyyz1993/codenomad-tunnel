@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  tunnel-hub:
+    build: .
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      - TUNNEL_DOMAIN=tunnel.yourdomain.com
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
