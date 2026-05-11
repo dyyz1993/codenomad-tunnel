@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CodeNomad Tunnel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--card:#12121a;--border:#1e1e2e;--text:#c0c0c0;--dim:#555;--accent:#7c3aed;--accent2:#a78bfa;--green:#22c55e;--red:#ef4444;--code-bg:#0d0d14}
+body{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.7}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.hero{text-align:center;padding:80px 20px 40px}
+.hero h1{font-size:clamp(2em,5vw,3.5em);font-weight:800;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;letter-spacing:-1px}
+.hero p{color:var(--dim);font-size:1.1em;max-width:600px;margin:0 auto}
+.badge{display:inline-block;background:var(--accent);color:#fff;padding:4px 14px;border-radius:20px;font-size:.8em;margin-top:20px}
+
+.container{max-width:820px;margin:0 auto;padding:0 20px 80px}
+
+.step{margin:48px 0}
+.step-num{color:var(--accent);font-size:.85em;font-weight:700;margin-bottom:8px;letter-spacing:1px}
+.step h2{font-size:1.3em;color:#e0e0e0;margin-bottom:8px}
+.step p{color:var(--dim);font-size:.9em;margin-bottom:16px}
+
+.code-block{position:relative;background:var(--code-bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:12px 0}
+.code-block .lang{position:absolute;top:0;right:70px;background:var(--border);color:var(--dim);padding:2px 10px;border-radius:0 0 6px 6px;font-size:.7em;text-transform:uppercase}
+.code-block pre{padding:20px;overflow-x:auto;font-size:.85em;line-height:1.8;color:#d4d4d4;white-space:pre}
+.code-block .comment{color:#6a9955}
+.code-block .cmd{color:#dcdcaa}
+.code-block .flag{color:#9cdcfe}
+.code-block .str{color:#ce9178}
+.copy-btn{position:absolute;top:8px;right:8px;background:var(--border);color:var(--dim);border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.75em;font-family:inherit;transition:all .2s}
+.copy-btn:hover{background:var(--accent);color:#fff}
+.copy-btn.copied{background:var(--green);color:#fff}
+
+.divider{border:none;border-top:1px solid var(--border);margin:48px 0}
+
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:24px 0}
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.info-card h3{color:var(--accent2);font-size:.9em;margin-bottom:8px}
+.info-card p{color:var(--dim);font-size:.8em}
+.info-card code{color:var(--green);font-size:.85em}
+
+footer{text-align:center;padding:40px 20px;color:var(--dim);font-size:.75em;border-top:1px solid var(--border)}
+footer a{color:var(--dim)}
+footer a:hover{color:var(--accent2)}
+
+@media(max-width:600px){
+  .hero{padding:48px 16px 24px}
+  .step h2{font-size:1.1em}
+  .code-block pre{font-size:.75em;padding:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>CodeNomad Tunnel</h1>
+  <p>One command to expose any local service to the internet. No signup, no config files, no friction.</p>
+  <span class="badge">Open Source &middot; Self-Hosted</span>
+</div>
+
+<div class="container">
+
+  <div class="step">
+    <div class="step-num">STEP 1</div>
+    <h2>Configure DNS</h2>
+    <p>Add a wildcard A record pointing to your VPS IP.</p>
+    <div class="code-block">
+      <span class="lang">dns</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="comment"># In your DNS provider dashboard:</span>
+<span class="cmd">*</span>.tunnel.yourdomain.com  IN  A  <span class="str">YOUR_VPS_IP</span></pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="step">
+    <div class="step-num">STEP 2</div>
+    <h2>Deploy Hub to VPS</h2>
+    <p>One command. Auto-downloads binary, sets up systemd service, starts tunnel hub.</p>
+    <div class="code-block">
+      <span class="lang">bash</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="comment"># Basic (port 80, HTTP)</span>
+curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/master/deploy.sh | \
+  sudo bash -s -- hub <span class="flag">--domain</span> <span class="str">"*.tunnel.yourdomain.com"</span></pre>
+    </div>
+    <div class="code-block">
+      <span class="lang">bash</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="comment"># With HTTPS (behind reverse proxy like Caddy/Nginx)</span>
+curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/master/deploy.sh | \
+  sudo bash -s -- hub <span class="flag">--domain</span> <span class="str">"*.tunnel.yourdomain.com"</span> \
+    <span class="flag">--http-port</span> <span class="str">8080</span> <span class="flag">--api-port</span> <span class="str">8080</span> \
+    <span class="flag">--public-url</span> <span class="str">"https://tunnel.yourdomain.com"</span></pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="step">
+    <div class="step-num">STEP 3</div>
+    <h2>Connect from Local Machine</h2>
+    <p>Run on any machine (Mac/Linux/Windows) to expose a local service.</p>
+    <div class="code-block">
+      <span class="lang">bash</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="comment"># Expose localhost:3000</span>
+curl -fsSL https://raw.githubusercontent.com/dyyz1993/codenomad-tunnel/master/deploy.sh | \
+  bash -s -- client <span class="flag">--hub-url</span> <span class="str">"https://api.tunnel.yourdomain.com"</span> \
+    <span class="flag">--local</span> <span class="str">"http://localhost:3000"</span> <span class="flag">--insecure</span></pre>
+    </div>
+    <div class="code-block">
+      <span class="lang">output</span>
+<pre><span class="comment"># You'll see:</span>
+Tunnel registered: <span style="color:#22c55e">a3x7k9</span>
+Public URL:  https://<span style="color:#22c55e">a3x7k9</span>.tunnel.yourdomain.com
+Relay URL:   wss://tunnel.yourdomain.com/relay/t_a3x7k9
+Connected to relay</pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="step">
+    <div class="step-num">STEP 4</div>
+    <h2>Done</h2>
+    <p>Anyone can now access your local service via the public URL.</p>
+    <div class="code-block">
+      <span class="lang">bash</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>curl https://<span style="color:#22c55e">a3x7k9</span>.tunnel.yourdomain.com/api/data</pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Management API</h3>
+      <p>Hub exposes REST API for tunnel CRUD, health checks, and request logs.</p>
+      <code>GET /api/health</code>
+    </div>
+    <div class="info-card">
+      <h3>WebSocket Relay</h3>
+      <p>Client maintains persistent WebSocket to hub, relaying HTTP requests bidirectionally.</p>
+      <code>/relay/{tunnelId}</code>
+    </div>
+    <div class="info-card">
+      <h3>Auto Reconnect</h3>
+      <p>Client auto-reconnects on disconnect with exponential backoff. No manual intervention needed.</p>
+      <code>3s retry interval</code>
+    </div>
+    <div class="info-card">
+      <h3>Platforms</h3>
+      <p>Pre-built binaries for Linux, macOS, Windows on amd64 and arm64.</p>
+      <code>5 platforms</code>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="step">
+    <div class="step-num">ADVANCED</div>
+    <h2>CLI Reference</h2>
+    <div class="code-block">
+      <span class="lang">hub flags</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="flag">--domain</span>       <span class="str">tunnel.yourdomain.com</span>   <span class="comment"># Base domain (required)</span>
+<span class="flag">--api-domain</span>   <span class="str">api.tunnel.yourdomain.com</span> <span class="comment"># API domain (auto-derived)</span>
+<span class="flag">--http-port</span>    <span class="str">80</span>                      <span class="comment"># Proxy port</span>
+<span class="flag">--api-port</span>     <span class="str">8080</span>                    <span class="comment"># API port</span>
+<span class="flag">--public-url</span>   <span class="str">https://...</span>             <span class="comment"># Override derived URL</span>
+<span class="flag">--tls-cert</span>     <span class="str">/path/to/cert.pem</span>      <span class="comment"># TLS cert</span>
+<span class="flag">--tls-key</span>      <span class="str">/path/to/key.pem</span>       <span class="comment"># TLS key</span></pre>
+    </div>
+    <div class="code-block">
+      <span class="lang">client flags</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre><span class="flag">--hub-url</span>      <span class="str">https://api.tunnel...</span>  <span class="comment"># Hub API URL (required)</span>
+<span class="flag">--local</span>        <span class="str">http://localhost:3000</span> <span class="comment"># Local service (required)</span>
+<span class="flag">--subdomain</span>    <span class="str">myapp</span>                 <span class="comment"># Request specific subdomain</span>
+<span class="flag">--name</span>         <span class="str">my-service</span>            <span class="comment"># Tunnel name</span>
+<span class="flag">--insecure</span>                             <span class="comment"># Skip TLS verification</span></pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="step">
+    <div class="step-num">DOCKER</div>
+    <h2>Docker Deployment</h2>
+    <div class="code-block">
+      <span class="lang">bash</span>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>docker compose up -d</pre>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://github.com/dyyz1993/codenomad-tunnel">GitHub</a> &middot;
+  <a href="https://github.com/dyyz1993/codenomad-tunnel/releases">Releases</a> &middot;
+  <a href="https://github.com/dyyz1993/codenomad-tunnel/blob/master/LIFECYCLE.md">Lifecycle</a>
+</footer>
+
+<script>
+function copyCode(btn){
+  const pre=btn.parentElement.querySelector('pre');
+  const text=pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='Copied!';
+    btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied')},2000);
+  });
+}
+</script>
+</body>
+</html>

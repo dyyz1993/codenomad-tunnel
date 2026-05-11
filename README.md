@@ -1,6 +1,12 @@
-# CodeNomad Tunnel Hub
+# CodeNomad Tunnel
+
+[![Website](https://img.shields.io/badge/Website-dyyz1993.github.io-blue?style=flat-square)](https://dyyz1993.github.io/codenomad-tunnel/)
+[![Release](https://img.shields.io/github/v/tag/dyyz1993/codenomad-tunnel?style=flat-square&label=Release)](https://github.com/dyyz1993/codenomad-tunnel/releases)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 HTTP-over-WebSocket reverse proxy tunnel service. Expose local services to the internet via wildcard subdomains.
+
+**[dyyz1993.github.io/codenomad-tunnel](https://dyyz1993.github.io/codenomad-tunnel/)** &mdash; One-command deployment guide.
 
 ## Quick Start
 
