@@ -3,7 +3,6 @@ name: Pages
 on:
   push:
     branches: [master]
-    paths: ['docs/**']
 
 permissions:
   contents: read
