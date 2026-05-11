@@ -1,3 +1,6 @@
 tunnel-hub
+tunnel-hub-local
+tunnel-client
 *.exe
 *.test
+.codenomad/
