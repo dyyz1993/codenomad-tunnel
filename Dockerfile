@@ -17,6 +17,7 @@ RUN mkdir -p /run/sshd && \
     echo "AllowUsers tunnel" >> /etc/ssh/sshd_config
 
 RUN adduser -D -s /bin/ash tunnel && \
+    passwd -u tunnel 2>/dev/null || sed -i 's/tunnel:x:/tunnel::/' /etc/shadow && \
     mkdir -p /home/tunnel/.ssh && \
     chown tunnel:tunnel /home/tunnel/.ssh && \
     chmod 700 /home/tunnel/.ssh
