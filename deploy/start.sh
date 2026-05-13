@@ -4,26 +4,28 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-if [ ! -f authorized_keys ]; then
-    echo "Generating authorized_keys from local ~/.ssh/id_rsa.pub ..."
-    cp ~/.ssh/id_rsa.pub authorized_keys
-    echo "Done. You can edit authorized_keys to add more keys."
+mkdir -p ssh data
+
+if [ ! -f ssh/authorized_keys ]; then
+    echo "[1/3] Injecting SSH public key from ~/.ssh/id_rsa.pub ..."
+    cp ~/.ssh/id_rsa.pub ssh/authorized_keys
+    chmod 644 ssh/authorized_keys
 fi
 
-mkdir -p data
-
-echo "Pulling latest image..."
+echo "[2/3] Pulling latest image ..."
 docker compose pull
 
-echo "Starting tunnel..."
+echo "[3/3] Starting tunnel ..."
 docker compose up -d
 
+sleep 2
 echo ""
-echo "Status:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 docker compose ps
 echo ""
-echo "SSH:    ssh -p ${HOST_SSH_PORT:-2222} tunnel@localhost"
-echo "API:    http://localhost:${HOST_API_PORT:-18081}/api/health"
-echo "Proxy:  http://localhost:${HOST_PROXY_PORT:-18080}/"
+echo "  Proxy:  http://localhost:${HOST_PROXY_PORT:-19090}/"
+echo "  API:    http://localhost:${HOST_API_PORT:-19091}/api/health"
+echo "  SSH:    ssh -p ${HOST_SSH_PORT:-2223} tunnel@localhost"
 echo ""
-echo "Logs: docker compose logs -f"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
