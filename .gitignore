@@ -4,3 +4,8 @@ tunnel-client
 *.exe
 *.test
 .codenomad/
+.opencode/
+video/
+deploy/authorized_keys
+deploy/data/
+docker/authorized_keys

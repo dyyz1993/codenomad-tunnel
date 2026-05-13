@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  tunnel:
+    image: ghcr.io/dyyz1993/codenomad-tunnel:latest
+    container_name: codenomad-tunnel
+    restart: unless-stopped
+    ports:
+      - "${HOST_PROXY_PORT:-18080}:18080"
+      - "${HOST_API_PORT:-18081}:18081"
+      - "${HOST_SSH_PORT:-2222}:2222"
+    volumes:
+      - ./authorized_keys:/home/tunnel/.ssh/authorized_keys:ro
+      - ./data:/data
+    environment:
+      - TUNNEL_DOMAIN=${TUNNEL_DOMAIN:-tunnel.19930810.xyz}
+      - API_DOMAIN=${API_DOMAIN:-api.tunnel.19930810.xyz}
+      - HTTP_PORT=18080
+      - API_PORT=18081
+      - TUNNEL_PUBLIC_URL=${TUNNEL_PUBLIC_URL:-https://tunnel.19930810.xyz:8443}
+    deploy:
+      resources:
+        limits:
+          memory: ${MEMORY_LIMIT:-128M}
