@@ -16,6 +16,7 @@ services:
       - HTTP_PORT=18080
       - API_PORT=18081
       - TUNNEL_PUBLIC_URL=${TUNNEL_PUBLIC_URL:-https://tunnel.19930810.xyz:8443}
+      - TUNNEL_RELAY_URL=${TUNNEL_RELAY_URL:-}
     deploy:
       resources:
         limits:

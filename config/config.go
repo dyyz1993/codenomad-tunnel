@@ -16,6 +16,7 @@ type Config struct {
 	TLSCert   string
 	TLSKey    string
 	PublicURL string
+	RelayURL  string
 }
 
 func normalizeDomain(domain string) string {
@@ -61,6 +62,9 @@ func Parse() *Config {
 	if env := os.Getenv("TUNNEL_PUBLIC_URL"); env != "" {
 		cfg.PublicURL = env
 	}
+	if env := os.Getenv("TUNNEL_RELAY_URL"); env != "" {
+		cfg.RelayURL = env
+	}
 
 	cfg.Domain = normalizeDomain(cfg.Domain)
 	cfg.APIDomain = normalizeDomain(cfg.APIDomain)
@@ -87,6 +91,9 @@ func (c *Config) GetPublicBaseURL() string {
 }
 
 func (c *Config) GetRelayBaseURL() string {
+	if c.RelayURL != "" {
+		return strings.TrimRight(c.RelayURL, "/")
+	}
 	base := c.GetPublicBaseURL()
 	if strings.HasPrefix(base, "https://") {
 		return "wss://" + strings.TrimPrefix(base, "https://")
